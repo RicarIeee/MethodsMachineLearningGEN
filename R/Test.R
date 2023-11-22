@@ -1,3 +1,4 @@
+library(conflicted)
 library(tidyverse)
 library(caret)
 library(class)
@@ -51,7 +52,7 @@ names(data_filter)[8:12631] <- aux2$HGNC.symbol
 
 final_data_gen <- colnames(data_filter)
 
-
+conflicts_prefer(dplyr::filter)
 data_PPInR_filtrado <- data_PPInR %>%
   filter(gen %in% final_data_gen)
 
@@ -60,7 +61,7 @@ Predictors <- as.vector(head(data_PPInR_filtrado[, 1], 100))
 Predictors <- as.character(unlist(Predictors))
 
 colnames(data_filter)[is.na(colnames(data_filter))] <- paste0("xs", seq_along(colnames(data_filter) == ""))
-set.seed(1)
+set.seed(13)
 
 data_filter <- data_filter %>%
   group_by(sample_type) %>%
@@ -204,10 +205,10 @@ DataBulk <- file.path(parentFolder, "data/ExperimentsBulk.rdata")
 load(DataBulk)
 ls()
 
-gen_scores <- results[["ENSG00000145675"]][["gen_scores"]]
+gen_scores <- results[["ENSG00000145675"]][["geneScore"]]
 View(gen_scores)
 
-gen_scores2<- gen_scores%>%arrange(desc(score))
+gen_scores2<- gen_scores%>% arrange(desc(score))
 score_column <- gen_scores2$features
 
 # Obtén la columna "features" de gen_scores2
