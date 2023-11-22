@@ -1,4 +1,3 @@
-library(conflicted)
 library(tidyverse)
 library(caret)
 library(class)
