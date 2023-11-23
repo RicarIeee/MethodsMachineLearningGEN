@@ -11,78 +11,67 @@ library(e1071)
 library(kernlab)
 
 
-datanormal <-(DynamicCancerDriverKM::BRCA_normal)
+normaldata <-(DynamicCancerDriverKM::BRCA_normal)
 dataPt <-(DynamicCancerDriverKM::BRCA_PT)
-final_data <- bind_rows(datanormal, dataPt)
+final_data <- bind_rows(normaldata, dataPt)
 
 
-porcentaje_menor_10 <- final_data %>%
+rate_min_10 <- final_data %>%
   summarise_all(~ mean(. <400, na.rm = TRUE))
 
 
-columnas_a_eliminar <- names(porcentaje_menor_10[, porcentaje_menor_10 >= 0.8])
+colmn_delate <- names(rate_min_10[, rate_min_10 >= 0.8])
 
 
-final_data_filtrado <- final_data %>%
-  select(-one_of(columnas_a_eliminar))
+data_filter <- final_data %>%
+  select(-one_of(colmn_delate))
 
-final_data_filtrado2 <- final_data_filtrado
+data_filter2 <- data_filter
 
-data_pii<-(DynamicCancerDriverKM::PPI)
+data_PPI<-(DynamicCancerDriverKM::PPI)
 
-data_piin <- data_pii %>%
+data_PPIn <- data_PPI %>%
   pivot_longer(cols = c(`Input-node Gene Symbol`, `Output-node Gene Symbol`), names_to = "variable", values_to = "gen") %>%
   group_by(gen, variable) %>%
   summarise(frecuencia = n()) %>%
   pivot_wider(names_from = variable, values_from = frecuencia, values_fill = 0)
 
-data_piinR <- data_piin %>%
+data_PPInR <- data_PPIn %>%
   mutate(total_mode = `Input-node Gene Symbol` + `Output-node Gene Symbol`) %>%
   select(total_mode) %>%
   arrange(desc(total_mode))
 
 
-print(data_piinR)
+print(data_PPInR)
 
-final_data_filtradox<-colnames(final_data_filtrado)[ 8:ncol(final_data_filtrado)]
-aux2 <- AMCBGeneUtils::changeGeneId(final_data_filtradox, from = "Ensembl.ID")
+data_filter_x<-colnames(data_filter)[ 8:ncol(data_filter)]
+aux2 <- AMCBGeneUtils::changeGeneId(data_filter_x, from = "Ensembl.ID")
 
-names(final_data_filtrado)[8:12631] <- aux2$HGNC.symbol
+names(data_filter)[8:12631] <- aux2$HGNC.symbol
 
 
-genes_en_final_data <- colnames(final_data_filtrado)
+final_data_gen <- colnames(data_filter)
 
-<<<<<<< HEAD
 conflicts_prefer(dplyr::filter)
 data_PPInR_filtrado <- data_PPInR %>%
   filter(gen %in% final_data_gen)
-=======
-
-data_piinR_filtrado <- data_piinR %>%
-  filter(gen %in% genes_en_final_data)
->>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 
 # k-NN model
-Predictores <- as.vector(head(data_piinR_filtrado[, 1], 100))
-Predictores <- as.character(unlist(Predictores))
+Predictors <- as.vector(head(data_PPInR_filtrado[, 1], 100))
+Predictors <- as.character(unlist(Predictors))
 
-<<<<<<< HEAD
 colnames(data_filter)[is.na(colnames(data_filter))] <- paste0("xs", seq_along(colnames(data_filter) == ""))
 set.seed(13)
-=======
-colnames(final_data_filtrado)[is.na(colnames(final_data_filtrado))] <- paste0("xs", seq_along(colnames(final_data_filtrado) == ""))
-set.seed(1)
->>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 
-final_data_filtradoe <- final_data_filtrado %>%
+data_filter <- data_filter %>%
   group_by(sample_type) %>%
   sample_n(123, replace = TRUE) %>%
   ungroup()
 
-sample.index <- sample(1:nrow(final_data_filtradoe), nrow(final_data_filtradoe) * 0.6, replace = FALSE)
+sample.index <- sample(1:nrow(data_filter), nrow(data_filter) * 0.6, replace = FALSE)
 
-train.data <- final_data_filtradoe[sample.index, c(Predictores, "sample_type"), drop = FALSE]
-test.data <- final_data_filtradoe[-sample.index, c(Predictores, "sample_type"), drop = FALSE]
+train.data <- data_filter[sample.index, c(Predictors, "sample_type"), drop = FALSE]
+test.data <- data_filter[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
 
 train.data$sample_type <- factor(train.data$sample_type)
 test.data$sample_type <- factor(test.data$sample_type)
@@ -106,11 +95,11 @@ confusionMatrix(data = knnPredict, reference = test.data$sample_type)
 
 # Linear regression
 
-final_data_filtradoe <- final_data_filtradoe %>%
+data_filter <- data_filter %>%
   mutate(sample_type = ifelse(sample_type == "Solid Tissue Normal", 1, 0))
 
-train.data <- final_data_filtradoe[sample.index, c(Predictores, "sample_type"), drop = FALSE]
-test.data <- final_data_filtradoe[-sample.index, c(Predictores, "sample_type"), drop = FALSE]
+train.data <- data_filter[sample.index, c(Predictors, "sample_type"), drop = FALSE]
+test.data <- data_filter[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
 
 # Fit linear regression model
 ins_model <- lm(sample_type ~ ., data = train.data)
@@ -130,7 +119,7 @@ print(model)
 
 fit <- rpart(sample_type ~ .,
              method = "anova",
-             data = final_data_filtradoe[, c(Predictores, "sample_type")],
+             data = data_filter[, c(Predictors, "sample_type")],
              control = rpart.control(xval = 10))
 
 # Print the decision tree
@@ -139,16 +128,16 @@ print(fit)
 # Plot the decision tree
 rpart.plot::rpart.plot(fit)
 
-##primer bosque
+## First Random Forest
 
 fit.rf <- randomForest(sample_type ~ .,
-                       data = final_data_filtradoe[, c(Predictores, "sample_type")])
+                       data = data_filter[, c(Predictors, "sample_type")])
 prediction.rf <- predict(fit.rf, test.data)
 table(test.data$sample_type, prediction.rf)
 
-## segundo bosque
+## Second Random Forest
 fit.rf <- randomForest(sample_type ~ .,
-                       data = final_data_filtradoe[, c(Predictores, "sample_type")])
+                       data = data_filter[, c(Predictors, "sample_type")])
 
 
 prediction.rf <- predict(fit.rf, test.data)
@@ -156,29 +145,30 @@ output <- data.frame(Actual = test.data$sample_type, Predicted = prediction.rf)
 RMSE = sqrt(sum((output$Actual - output$Predicted)^2) / nrow(output))
 
 print(head(output))
-######vector
 
+######vector
 # Convierte la variable de respuesta a factor si no lo está
-final_data_filtradoe$sample_type <- as.factor(final_data_filtradoe$sample_type)
+data_filter$sample_type <- as.factor(data_filter$sample_type)
 
 # Divide los datos en conjuntos de entrenamiento y prueba
-set.seed(1)
-sample.index <- sample(1:nrow(final_data_filtradoe), nrow(final_data_filtradoe) * 0.7, replace = FALSE)
-train.data <- final_data_filtradoe[sample.index, c(Predictores, "sample_type"), drop = FALSE]
-test.data <- final_data_filtradoe[-sample.index, c(Predictores, "sample_type"), drop = FALSE]
+
+set.seed(13)
+sample.index <- sample(1:nrow(data_filter), nrow(data_filter) * 0.7, replace = FALSE)
+train.data <- data_filter[sample.index, c(Predictors, "sample_type"), drop = FALSE]
+test.data <- data_filter[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
 
 # Realiza la búsqueda de hiperparámetros con e1071
-tune.out <- tune(svm,
+tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
                  kernel = "linear",
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 
 # Extrae el mejor modelo
-bestmod <- tune.out$best.model
+best_model <- tune_out$best.model
 
 # Configura el modelo SVM con un kernel lineal utilizando los mejores hiperparámetros
-svm_model <- svm(sample_type ~ ., data = train.data, kernel = "linear", cost = bestmod[["cost"]])
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "linear", cost = best_model[["cost"]])
 
 # Realiza predicciones en el conjunto de prueba
 svm_predict <- predict(svm_model, newdata = test.data)
@@ -189,15 +179,15 @@ confusionMatrix(data = svm_predict, reference = test.data$sample_type)
 
 
 # Realiza la búsqueda de hiperparámetros con e1071
-tune.out <- tune(svm,
+tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
                  kernel = "radial",
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 
-bestmod <- tune.out$best.model
+best_model <- tune_out$best.model
 
-svm_model <- svm(sample_type ~ ., data = train.data, kernel = "radial", cost = bestmod[["cost"]])
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "radial", cost = best_model[["cost"]])
 # Realiza predicciones en el conjunto de prueba
 svm_predict <- predict(svm_model, newdata = test.data)
 
@@ -215,45 +205,35 @@ DataBulk <- file.path(parentFolder, "data/ExperimentsBulk.rdata")
 load(DataBulk)
 ls()
 
-<<<<<<< HEAD
 gen_scores <- results[["ENSG00000145675"]][["geneScore"]]
 View(gen_scores)
 
 gen_scores2<- gen_scores%>% arrange(desc(score))
 score_column <- gen_scores2$features
-=======
-geneScore <- results[["ENSG00000145675"]][["geneScore"]]
 
-View(geneScore)
->>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
-
-geneScore2<- geneScore%>%arrange(desc(score))
-
-score_column <- geneScore2$features
-
-# Obtén la columna "features" de geneScore2
-features_column <- geneScore2$features
+# Obtén la columna "features" de gen_scores2
+features_column <- gen_scores2$features
 
 # Aplica la función changeGeneId a los valores de la columna "features"
-geneScore2$features <- AMCBGeneUtils::changeGeneId(features_column, from = "Ensembl.ID")$HGNC.symbol
+gen_scores2$features <- AMCBGeneUtils::changeGeneId(features_column, from = "Ensembl.ID")$HGNC.symbol
 
-geneScore2_filtrado <- geneScore2 %>%
-  filter(features %in% genes_en_final_data) #2
+gen_scores2_filter <- gen_scores2 %>%
+  filter(features %in% final_data_gen) #2
 
-Predictores_2 <- head(geneScore2_filtrado$features, 100)
+Predictors_2 <- head(gen_scores2_filter$features, 100)
 
 # Convierte a caracteres si es necesario
-Predictores_2 <- as.character(Predictores_2)
+Predictors_2 <- as.character(Predictors_2)
 
-final_data_filtradoe2 <- final_data_filtrado %>%
+data_filter2 <- data_filter %>%
   group_by(sample_type) %>%
   sample_n(123, replace = TRUE) %>%
   ungroup()
 
-sample.index <- sample(1:nrow(final_data_filtradoe2), nrow(final_data_filtradoe2) * 0.7, replace = FALSE)
+sample.index <- sample(1:nrow(data_filter2), nrow(data_filter2) * 0.7, replace = FALSE)
 
-train.data <- final_data_filtradoe2[sample.index, c(Predictores_2, "sample_type"), drop = FALSE]
-test.data <- final_data_filtradoe2[-sample.index, c(Predictores_2, "sample_type"), drop = FALSE]
+train.data <- data_filter2[sample.index, c(Predictors_2, "sample_type"), drop = FALSE]
+test.data <- data_filter2[-sample.index, c(Predictors_2, "sample_type"), drop = FALSE]
 
 train.data$sample_type <- factor(train.data$sample_type)
 test.data$sample_type <- factor(test.data$sample_type)
@@ -279,11 +259,11 @@ confusionMatrix(data = knnPredict, reference = test.data$sample_type)
 
 # Linear regression
 
-final_data_filtradoe2 <- final_data_filtradoe2  %>%
+data_filter2 <- data_filter2  %>%
   mutate(sample_type = ifelse(sample_type == "Solid Tissue Normal", 1, 0))
 
-train.data <- final_data_filtradoe2[sample.index, c(Predictores, "sample_type"), drop = FALSE]
-test.data <- final_data_filtradoe2[-sample.index, c(Predictores, "sample_type"), drop = FALSE]
+train.data <- data_filter2[sample.index, c(Predictors, "sample_type"), drop = FALSE]
+test.data <- data_filter2[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
 
 # Fit linear regression model
 ins_model <- lm(sample_type ~ ., data = train.data)
@@ -309,7 +289,7 @@ print(model)
 
 fit <- rpart(sample_type ~ .,
              method = "anova",
-             data = final_data_filtradoe2[, c(Predictores, "sample_type")],
+             data = data_filter2[, c(Predictors, "sample_type")],
              control = rpart.control(xval = 10))
 
 # Print the decision tree
@@ -321,13 +301,13 @@ rpart.plot::rpart.plot(fit)
 ###### Bosques aleatorios
 
 fit.rf <- randomForest(sample_type ~ .,
-                       data = final_data_filtradoe2[, c(Predictores, "sample_type")])
+                       data = data_filter2[, c(Predictors, "sample_type")])
 prediction.rf <- predict(fit.rf, test.data)
 table(test.data$sample_type, prediction.rf)
 
 
 fit.rf <- randomForest(sample_type ~ .,
-                       data = final_data_filtradoe2[, c(Predictores, "sample_type")])
+                       data = data_filter2[, c(Predictors, "sample_type")])
 
 
 prediction.rf <- predict(fit.rf, test.data)
@@ -339,26 +319,26 @@ print(head(output))
 #######################################
 
 
-final_data_filtradoe2$sample_type <- as.factor(final_data_filtradoe2$sample_type)
+data_filter2$sample_type <- as.factor(data_filter2$sample_type)
 
 
 set.seed(123)
-sample.index <- sample(1:nrow(final_data_filtradoe2), nrow(final_data_filtradoe2) * 0.7, replace = FALSE)
-train.data <- final_data_filtradoe2[sample.index, c(Predictores, "sample_type"), drop = FALSE]
-test.data <- final_data_filtradoe2[-sample.index, c(Predictores, "sample_type"), drop = FALSE]
+sample.index <- sample(1:nrow(data_filter2), nrow(data_filter2) * 0.7, replace = FALSE)
+train.data <- data_filter2[sample.index, c(Predictors, "sample_type"), drop = FALSE]
+test.data <- data_filter2[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
 
 
-tune.out <- tune(svm,
+tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
                  kernel = "linear",
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 
 
-bestmod <- tune.out$best.model
+best_model <- tune_out$best.model
 
 
-svm_model <- svm(sample_type ~ ., data = train.data, kernel = "linear", cost = bestmod[["cost"]])
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "linear", cost = best_model[["cost"]])
 
 
 svm_predict <- predict(svm_model, newdata = test.data)
@@ -367,15 +347,15 @@ svm_predict <- predict(svm_model, newdata = test.data)
 
 confusionMatrix(data = svm_predict, reference = test.data$sample_type)
 
-tune.out <- tune(svm,
+tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
                  kernel = "radial",
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 
-bestmod <- tune.out$best.model
+best_model <- tune_out$best.model
 
-svm_model <- svm(sample_type ~ ., data = train.data, kernel = "radial", cost = bestmod[["cost"]])
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "radial", cost = best_model[["cost"]])
 
 svm_predict <- predict(svm_model, newdata = test.data)
 
@@ -383,15 +363,15 @@ svm_predict <- predict(svm_model, newdata = test.data)
 confusionMatrix(data = svm_predict, reference = test.data$sample_type)
 
 # Realiza la búsqueda de hiperparámetros con e1071
-tune.out <- tune(svm,
+tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
                  kernel = "sigmoid",
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 
-bestmod <- tune.out$best.model
+best_model <- tune_out$best.model
 
-svm_model <- svm(sample_type ~ ., data = train.data, kernel = "sigmoid", cost = bestmod[["cost"]])
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "sigmoid", cost = best_model[["cost"]])
 # Realiza predicciones en el conjunto de prueba
 svm_predict <- predict(svm_model, newdata = test.data)
 

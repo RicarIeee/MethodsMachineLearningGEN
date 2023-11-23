@@ -1,5 +1,6 @@
 ---
 title: "Report_Final_Project"
+<<<<<<< HEAD
 author: "Ricardo Arturo Figueroa -Juan Diego Fonseca"
 date: "2023-11-22"
 output:
@@ -7,6 +8,11 @@ output:
 editor_options:
   markdown:
     wrap: 72
+=======
+author: "Ricardo Arturo Figueroa"
+date: "2023-11-22"
+output: html_document
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ---
 
 ```{r include=FALSE}
@@ -23,6 +29,7 @@ library(e1071)
 library(kernlab)
 ```
 
+<<<<<<< HEAD
 #### Step 1: Installing the DynamicCancerDriverKM Package
 
 Las librerías utilizadas para concluir este proyecto son las siguientes
@@ -56,12 +63,15 @@ Se creo una única matriz fusionando los datos de TCGA_BRCA_Normal.rdata
 y TCGA_BRCA_PT.rdata, esta cuanta con la columna **`Sample_type`**
 nuestra variable objetivo. De la siguiente manera:
 
+=======
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ```{r}
 normaldata <-(DynamicCancerDriverKM::BRCA_normal)
 dataPt <-(DynamicCancerDriverKM::BRCA_PT)
 final_data <- bind_rows(normaldata, dataPt)
 
 rate_min_10 <- final_data %>%
+<<<<<<< HEAD
                summarise_all(~ mean(. <400, na.rm = TRUE))
 
 colmn_delate <- names(rate_min_10[, rate_min_10 >= 0.8])
@@ -138,6 +148,35 @@ coinciden con los nombres actualizados presentes en
 **`data_PPInR_filtrado`**.
 
 ```{r}
+=======
+  summarise_all(~ mean(. <400, na.rm = TRUE))
+```
+
+
+```{r}
+colmn_delate <- names(rate_min_10[, rate_min_10 >= 0.8])
+
+data_filter <- final_data %>%
+  select(-one_of(colmn_delate))
+
+data_filter2 <- data_filter
+
+data_PPI<-(DynamicCancerDriverKM::PPI)
+
+data_PPIn <- data_PPI %>%
+  pivot_longer(cols = c(`Input-node Gene Symbol`, `Output-node Gene Symbol`), names_to = "variable", values_to = "gen") %>%
+  group_by(gen, variable) %>%
+  summarise(frecuencia = n()) %>%
+  pivot_wider(names_from = variable, values_from = frecuencia, values_fill = 0)
+
+data_PPInR <- data_PPIn %>%
+  mutate(total_mode = `Input-node Gene Symbol` + `Output-node Gene Symbol`) %>%
+  select(total_mode) %>%
+  arrange(desc(total_mode))
+
+print(data_PPInR)
+
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 data_filter_x<-colnames(data_filter)[ 8:ncol(data_filter)]
 aux2 <- AMCBGeneUtils::changeGeneId(data_filter_x, from = "Ensembl.ID")
 
@@ -146,6 +185,7 @@ names(data_filter)[8:12631] <- aux2$HGNC.symbol
 final_data_gen <- colnames(data_filter)
 
 data_PPInR_filtrado <- data_PPInR %>%
+<<<<<<< HEAD
                        filter(gen %in% final_data_gen)
 ```
 
@@ -191,10 +231,35 @@ test.data <- data2_filter[-sample.index, c(Predictors, "sample_type"), drop = FA
 ```
 
 ```{r}
+=======
+  filter(gen %in% final_data_gen)
+```
+
+
+# k-NN model
+```{r}
+Predictors <- as.vector(head(data_PPInR_filtrado[, 1], 100))
+Predictors <- as.character(unlist(Predictors))
+
+colnames(data_filter)[is.na(colnames(data_filter))] <- paste0("xs", seq_along(colnames(data_filter) == ""))
+set.seed(13)
+
+data2_filter <- data_filter %>%
+  group_by(sample_type) %>%
+  sample_n(123, replace = TRUE) %>%
+  ungroup()
+
+sample.index <- sample(1:nrow(data2_filter), nrow(data2_filter) * 0.6, replace = FALSE)
+
+train.data <- data2_filter[sample.index, c(Predictors, "sample_type"), drop = FALSE]
+test.data <- data2_filter[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
+
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 train.data$sample_type <- factor(train.data$sample_type)
 test.data$sample_type <- factor(test.data$sample_type)
 ```
 
+<<<<<<< HEAD
 **Train the k-NN model**
 
 Se introduce la librería **`caret`** para realizar una validación
@@ -217,17 +282,30 @@ hiperparámetros, estableciéndose en 50 en este caso.
 ```{r}
 ctrl <- trainControl(method = "cv", p = 0.7)
 
+=======
+# Train the k-NN model
+```{r}
+ctrl <- trainControl(method = "cv", p = 0.6)
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 knnFit <- train(sample_type ~ .,
                 data = train.data,
                 method = "knn",
                 trControl = ctrl,
                 preProcess = c("range"),  # c("center", "scale") for z-score
                 tuneLength = 50)
+<<<<<<< HEAD
 
+=======
+```
+
+# Plot k-NN model
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 plot(knnFit)
 knnPredict <- predict(knnFit, newdata = test.data)
 ```
 
+<<<<<<< HEAD
 Create the confusion matrix for k-NN
 
 ```{r include=FALSE}
@@ -285,6 +363,34 @@ la variable objetivo que es explicada por el modelo.
 
 ```{r include=FALSE}
 # Train the linear regression model
+=======
+# Create the confusion matrix for k-NN
+```{r}
+confusionMatrix(data = knnPredict, reference = test.data$sample_type)
+```
+
+# Linear regression
+```{r}
+data2_filter <- data2_filter %>%
+  mutate(sample_type = ifelse(sample_type == "Solid Tissue Normal", 1, 0))
+
+train.data <- data2_filter[sample.index, c(Predictors, "sample_type"), drop = FALSE]
+test.data <- data2_filter[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
+```
+
+# Fit linear regression model
+```{r}
+ins_model <- lm(sample_type ~ ., data = train.data)
+```
+
+# Summary of linear regression model
+```{r}
+summary(ins_model)
+```
+
+# Train the linear regression model
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 train.control <- trainControl(method = "cv", number = 10)
 model <- train(sample_type ~ .,
                data = train.data,
@@ -292,6 +398,7 @@ model <- train(sample_type ~ .,
                trControl = train.control)
 ```
 
+<<<<<<< HEAD
 **Summarize the results of linear regression model**
 
 ```{r}
@@ -339,10 +446,29 @@ fit <- rpart(sample_type ~ .,
              control = rpart.control(xval = 10))
 ```
 
+=======
+# Summarize the results of linear regression model
+```{r}
+print(model)
+
+fit <- rpart(sample_type ~ .,
+             method = "anova",
+             data = data_filter[, c(Predictors, "sample_type")],
+             control = rpart.control(xval = 10))
+```
+
+# Print the decision tree
+```{r}
+print(fit)
+```
+
+# Plot the decision tree
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ```{r}
 rpart.plot::rpart.plot(fit)
 ```
 
+<<<<<<< HEAD
 **Soporte Vectorial**
 
 Primero se lleva a cabo una búsqueda de hiperparámetros para el modelo
@@ -366,14 +492,48 @@ data2_filter$sample_type <- as.factor(data2_filter$sample_type)
 
 # Divide los datos en conjuntos de entrenamiento y prueba
 
+=======
+## First Random Forest
+```{r}
+fit.rf <- randomForest(sample_type ~ .,
+                       data = data2_filter[, c(Predictors, "sample_type")])
+prediction.rf <- predict(fit.rf, test.data)
+table(test.data$sample_type, prediction.rf)
+```
+
+## Second Random Forest
+```{r}
+fit.rf <- randomForest(sample_type ~ .,
+                       data = data2_filter[, c(Predictors, "sample_type")])
+
+prediction.rf <- predict(fit.rf, test.data)
+output <- data.frame(Actual = test.data$sample_type, Predicted = prediction.rf)
+RMSE = sqrt(sum((output$Actual - output$Predicted)^2) / nrow(output))
+
+print(head(output))
+```
+
+######vector
+# Convierte la variable de respuesta a factor si no lo está
+```{r}
+data2_filter$sample_type <- as.factor(data2_filter$sample_type)
+```
+
+# Divide los datos en conjuntos de entrenamiento y prueba
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 set.seed(13)
 sample.index <- sample(1:nrow(data2_filter), nrow(data2_filter) * 0.7, replace = FALSE)
 train.data <- data2_filter[sample.index, c(Predictors, "sample_type"), drop = FALSE]
 test.data <- data2_filter[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
 ```
 
+<<<<<<< HEAD
 *Realiza la búsqueda de hiperparámetros con e1071*
 
+=======
+# Realiza la búsqueda de hiperparámetros con e1071
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ```{r}
 tune_out <- tune(svm,
                  sample_type ~ .,
@@ -382,16 +542,21 @@ tune_out <- tune(svm,
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 ```
 
+<<<<<<< HEAD
 **Extraer el mejor modelo**
 
 Este modelo se eligió según algún criterio específico de rendimiento,
 como la precisión o el error, durante el proceso de ajuste de
 hiperparámetros realizado anteriormente con la función **`tune()`**.
 
+=======
+# Extrae el mejor modelo
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ```{r}
 best_model <- tune_out$best.model
 ```
 
+<<<<<<< HEAD
 ```{r include=FALSE}
 # Configura el modelo SVM con un kernel lineal utilizando los mejores hiperparámetros
 svm_model <- svm(sample_type ~ ., data = train.data, kernel = "linear", cost = best_model[["cost"]])
@@ -415,6 +580,25 @@ identificar negativos reales.
 
 ```{r include=FALSE}
 # Realiza la búsqueda de hiperparámetros con e1071
+=======
+# Configura el modelo SVM con un kernel lineal utilizando los mejores hiperparámetros
+```{r}
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "linear", cost = best_model[["cost"]])
+```
+
+# Realiza predicciones en el conjunto de prueba
+```{r}
+svm_predict <- predict(svm_model, newdata = test.data)
+```
+
+# Evalúa el rendimiento del modelo
+```{r}
+confusionMatrix(data = svm_predict, reference = test.data$sample_type)
+```
+
+# Realiza la búsqueda de hiperparámetros con e1071
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
@@ -422,6 +606,7 @@ tune_out <- tune(svm,
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 
 best_model <- tune_out$best.model
+<<<<<<< HEAD
 svm_model <- svm(sample_type ~ ., data = train.data, kernel = "radial", cost = best_model[["cost"]])
 ```
 
@@ -453,20 +638,47 @@ función **`load()`** se utiliza para cargar los datos desde el archivo
 "ExperimentsBulk.rdata" en el entorno de trabajo de R.
 
 ```{r include=FALSE}
+=======
+
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "radial", cost = best_model[["cost"]])
+```
+
+# Realiza predicciones en el conjunto de prueba
+```{r}
+svm_predict <- predict(svm_model, newdata = test.data)
+```
+
+# Evalúa el rendimiento del modelo
+```{r}
+library(caret)
+confusionMatrix(data = svm_predict, reference = test.data$sample_type)
+```
+
+##Segunda Parte
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 folder<-dirname(rstudioapi::getSourceEditorContext()$path)
 parentFolder <-dirname(folder)
 
 DataBulks <- file.path(paste0(parentFolder, "/ExperimentsBulk.rdata"))
 load(DataBulks)
 ls()
+<<<<<<< HEAD
 ```
 
 ```{r include=FALSE}
 gen_scores <- results[["ENSG00000145675"]][["geneScore"]]
+=======
+
+gen_scores <- results[["ENSG00000145675"]][["geneScore"]]
+View(gen_scores)
+
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 gen_scores2<- gen_scores%>%arrange(desc(score))
 score_column <- gen_scores2$features
 ```
 
+<<<<<<< HEAD
 ```{r}
 print(gen_scores %>% head(10))
 ```
@@ -503,6 +715,25 @@ gen_scores2_filter <- gen_scores2 %>%
 Predictors_2 <- head(gen_scores2_filter$features, 100)
 
 # Convierte a caracteres si es necesario
+=======
+# Obtén la columna "features" de gen_scores2
+```{r}
+features_column <- gen_scores2$features
+```
+
+# Aplica la función changeGeneId a los valores de la columna "features"
+```{r}
+gen_scores2$features <- AMCBGeneUtils::changeGeneId(features_column, from = "Ensembl.ID")$HGNC.symbol
+
+gen_scores2_filter <- gen_scores2 %>%
+  filter(features %in% final_data_gen) #2
+
+Predictors_2 <- head(gen_scores2_filter$features, 100)
+```
+
+# Convierte a caracteres si es necesario
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 Predictors_2 <- as.character(Predictors_2)
 
 data2_filter2 <- data_filter %>%
@@ -518,7 +749,14 @@ test.data <- data2_filter2[-sample.index, c(Predictors_2, "sample_type"), drop =
 train.data$sample_type <- factor(train.data$sample_type)
 test.data$sample_type <- factor(test.data$sample_type)
 
+<<<<<<< HEAD
 # Train the k-NN model
+=======
+```
+
+# Train the k-NN model
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ctrl <- trainControl(method = "cv", p = 0.7)
 knnFit <- train(sample_type ~ .,
                 data = train.data,
@@ -528,12 +766,18 @@ knnFit <- train(sample_type ~ .,
                 tuneLength = 50)
 ```
 
+<<<<<<< HEAD
 **Plot k-NN model**
 
+=======
+
+# Plot k-NN model
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ```{r}
 plot(knnFit)
 ```
 
+<<<<<<< HEAD
 ```{r include=FALSE}
 # Make predictions with k-NN
 knnPredict <- predict(knnFit, newdata = test.data)
@@ -554,11 +798,26 @@ para identificar positivos reales, mientras que la especificidad del
 **Linear regression**
 
 ```{r include=FALSE}
+=======
+# Make predictions with k-NN
+```{r}
+knnPredict <- predict(knnFit, newdata = test.data)
+```
+
+# Create the confusion matrix for k-NN
+```{r}
+confusionMatrix(data = knnPredict, reference = test.data$sample_type)
+```
+
+# Linear regression
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 data2_filter2 <- data2_filter2  %>%
   mutate(sample_type = ifelse(sample_type == "Solid Tissue Normal", 1, 0))
 
 train.data <- data2_filter2[sample.index, c(Predictors, "sample_type"), drop = FALSE]
 test.data <- data2_filter2[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
+<<<<<<< HEAD
 
 ins_model <- lm(sample_type ~ ., data = train.data)
 
@@ -584,6 +843,22 @@ que es explicada por el modelo.
 
 ```{r include=FALSE}
 # Train the linear regression model
+=======
+```
+
+# Fit linear regression model
+```{r}
+ins_model <- lm(sample_type ~ ., data = train.data)
+```
+
+# Summary of linear regression model
+```{r}
+summary(ins_model)
+```
+
+# Train the linear regression model
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 train.control <- trainControl(method = "cv", number = 10)
 model <- train(sample_type ~ .,
                data = train.data,
@@ -591,6 +866,7 @@ model <- train(sample_type ~ .,
               trControl = train.control)
 ```
 
+<<<<<<< HEAD
 **Summarize the results of linear regression model**
 
 ```{r}
@@ -599,10 +875,21 @@ print(model)
 
 ```{r include=FALSE}
 ##arboles de decision
+=======
+# Summarize the results of linear regression model
+```{r}
+print(model)
+
+```
+
+##arboles de decision
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 fit <- rpart(sample_type ~ .,
              method = "anova",
              data = data2_filter2[, c(Predictors, "sample_type")],
              control = rpart.control(xval = 10))
+<<<<<<< HEAD
 print(fit)
 ```
 
@@ -616,6 +903,22 @@ rpart.plot::rpart.plot(fit)
 **Bosques aleatorios**
 
 ```{r include=FALSE}
+=======
+```
+
+# Print the decision tree
+```{r}
+print(fit)
+```
+
+# Plot the decision tree
+```{r}
+rpart.plot::rpart.plot(fit)
+```
+
+###### Bosques aleatorios
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 fit.rf <- randomForest(sample_type ~ .,
                        data = data2_filter2[, c(Predictors, "sample_type")])
 prediction.rf <- predict(fit.rf, test.data)
@@ -629,6 +932,7 @@ fit.rf <- randomForest(sample_type ~ .,
 prediction.rf <- predict(fit.rf, test.data)
 output <- data.frame(Actual = test.data$sample_type, Predicted = prediction.rf)
 RMSE = sqrt(sum((output$Actual - output$Predicted)^2) / nrow(output))
+<<<<<<< HEAD
 ```
 
 ```{r}
@@ -641,16 +945,33 @@ print(head(output))
 data2_filter2$sample_type <- as.factor(data2_filter2$sample_type)
 
 set.seed(110)
+=======
+
+print(head(output))
+```
+
+#######################################
+```{r}
+data2_filter2$sample_type <- as.factor(data2_filter2$sample_type)
+
+
+set.seed(123)
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 sample.index <- sample(1:nrow(data2_filter2), nrow(data2_filter2) * 0.7, replace = FALSE)
 train.data <- data2_filter2[sample.index, c(Predictors, "sample_type"), drop = FALSE]
 test.data <- data2_filter2[-sample.index, c(Predictors, "sample_type"), drop = FALSE]
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
                  kernel = "linear",
                  ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)))
 
+<<<<<<< HEAD
 best_model <- tune_out$best.model
 svm_model <- svm(sample_type ~ ., 
                  data = train.data, kernel = "linear", 
@@ -661,6 +982,20 @@ svm_predict <- predict(svm_model,
 
 confusionMatrix(data = svm_predict, 
                 reference = test.data$sample_type)
+=======
+
+best_model <- tune_out$best.model
+
+
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "linear", cost = best_model[["cost"]])
+
+
+svm_predict <- predict(svm_model, newdata = test.data)
+
+
+
+confusionMatrix(data = svm_predict, reference = test.data$sample_type)
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 
 tune_out <- tune(svm,
                  sample_type ~ .,
@@ -670,6 +1005,7 @@ tune_out <- tune(svm,
 
 best_model <- tune_out$best.model
 
+<<<<<<< HEAD
 svm_model <- svm(sample_type ~ ., 
                  data = train.data, kernel = "radial", 
                  cost = best_model[["cost"]])
@@ -681,6 +1017,18 @@ confusionMatrix(data = svm_predict,
                 reference = test.data$sample_type)
 
 # Realiza la búsqueda de hiperparámetros con e1071
+=======
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "radial", cost = best_model[["cost"]])
+
+svm_predict <- predict(svm_model, newdata = test.data)
+
+
+confusionMatrix(data = svm_predict, reference = test.data$sample_type)
+```
+
+# Realiza la búsqueda de hiperparámetros con e1071
+```{r}
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 tune_out <- tune(svm,
                  sample_type ~ .,
                  data = train.data,
@@ -689,6 +1037,7 @@ tune_out <- tune(svm,
 
 best_model <- tune_out$best.model
 
+<<<<<<< HEAD
 svm_model <- svm(sample_type ~ ., 
                  data = train.data, kernel = "sigmoid", 
                  cost = best_model[["cost"]])
@@ -698,10 +1047,17 @@ svm_model <- svm(sample_type ~ .,
 
 **Realiza predicciones en el conjunto de prueba**
 
+=======
+svm_model <- svm(sample_type ~ ., data = train.data, kernel = "sigmoid", cost = best_model[["cost"]])
+```
+
+# Realiza predicciones en el conjunto de prueba
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
 ```{r}
 svm_predict <- predict(svm_model, newdata = test.data)
 ```
 
+<<<<<<< HEAD
 El Root Mean Squared Error (RMSE) de 0.4087 mide la raíz cuadrada de la
 diferencia promedio entre las predicciones del modelo y los valores
 reales, lo que sugiere un ajuste razonable del modelo. El R cuadrado
@@ -757,3 +1113,9 @@ la metodología de modelado para garantizar la validez de los resultados.
 La interpretación biológica y la contextualización de los resultados son
 esenciales para validar la relevancia clínica y biológica de los modelos
 generados.
+=======
+# Evalúa el rendimiento del modelo
+```{r}
+confusionMatrix(data = svm_predict, reference = test.data$sample_type)
+```
+>>>>>>> 94b89f9010ea4d337d4f45b6b69746919962aa85
